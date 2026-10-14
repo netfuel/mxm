@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="is-preloading">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -14,12 +14,36 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="assets/style.css">
+	<style>
+		/* Preloader: inline so it covers the page before anything else paints */
+		#preloader { position: fixed; inset: 0; z-index: 200; background: #110f0d; }
+		#preloader canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+		#preloader p { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0;
+			font: 400 10px/1 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: .32em; text-indent: .32em;
+			text-transform: lowercase; color: #c6ff00; animation: mxm-pulse 1.1s ease-in-out infinite; transition: opacity .3s ease; }
+		#preloader.is-revealing p { opacity: 0 !important; animation: none; }
+		@keyframes mxm-pulse { 0%, 100% { opacity: .22 } 50% { opacity: 1 } }
+		html.is-preloading, html.is-preloading body { overflow: hidden; }
+		@media (prefers-reduced-motion: reduce) { #preloader p { animation: none; opacity: .8 } }
+	</style>
 	<script>
 		/* Videos are served from R2 at /media/* on this domain (functions/media/[[path]].js); locally from the media/ folder. */
 		window.MEDIA_BASE = 'media/';
 	</script>
 </head>
 <body>
+	<div id="preloader" aria-hidden="true"><canvas></canvas><p>loading</p></div>
+	<script src="assets/preloader.js"></script>
+
+	<!-- Background loop -->
+	<div class="bg" aria-hidden="true">
+		<video class="bg__video" autoplay muted loop playsinline preload="auto" poster="assets/bg/mxm-quilt-loop-720p-poster.jpg">
+			<source src="assets/bg/mxm-quilt-loop-720p.webm" type="video/webm">
+			<source src="assets/bg/mxm-quilt-loop-720p.mp4" type="video/mp4">
+		</video>
+		<div class="bg__scrim"></div>
+	</div>
+
 	<main class="mwg_effect094" id="top">
 		<div class="container">
 			<h1 class="lockup" aria-label="MarceauxMarceaux"><span class="lockup__name" aria-hidden="true">Marceaux<br>Marceaux</span><br><span>A musician and DJ from Memphis, Tennessee USA</span></h1>
@@ -72,5 +96,6 @@
 	<script src="assets/vendor/lenis.min.js"></script>
 	<script src="assets/videos.js"></script>
 	<script src="assets/script.js"></script>
+	<script type="module" src="assets/vfx-lens.js"></script>
 </body>
 </html>

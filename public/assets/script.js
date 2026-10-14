@@ -28,9 +28,16 @@ window.addEventListener('DOMContentLoaded', () => {
         </li>`).join('')
 
     const cards = [...cardsEl.querySelectorAll('.card')]
+    window.MXM_CARDS = cards
+    window.dispatchEvent(new Event('mxm:cards'))
 
     /* ---------- Smooth scroll ---------- */
     const lenis = new Lenis({ autoRaf: true })
+    // Hold scrolling until the preloader has revealed the page
+    if (document.documentElement.classList.contains('is-preloading')) {
+        lenis.stop()
+        window.addEventListener('mxm:revealed', () => { lenis.start(); ScrollTrigger.refresh() }, { once: true })
+    }
     lenis.on('scroll', ScrollTrigger.update)
 
     /* ---------- Horizontal drift (MWG 094) ---------- */
@@ -120,6 +127,11 @@ window.addEventListener('DOMContentLoaded', () => {
         })
     }
 
+    /* ---------- Background loop ---------- */
+    const bgVideo = document.querySelector('.bg__video')
+    if (bgVideo && reduceMotion) { bgVideo.removeAttribute('autoplay'); bgVideo.pause() }
+    const bgPlay = on => { if (!bgVideo || reduceMotion) return; on ? bgVideo.play().catch(() => {}) : bgVideo.pause() }
+
     /* ---------- Player ---------- */
     const el = document.getElementById('player')
     const bg = el.querySelector('.player__bg')
@@ -181,6 +193,7 @@ window.addEventListener('DOMContentLoaded', () => {
     function open(i) {
         if (player.open || player.busy) return
         player.open = true; player.busy = true
+        bgPlay(false)
         setPreview(null)
         lenis.stop()
         document.body.classList.add('is-playing')
@@ -188,10 +201,21 @@ window.addEventListener('DOMContentLoaded', () => {
         video.controls = false
         load(i) // play() inside the click gesture so sound is allowed
 
+        const ready = () => { player.busy = false; video.controls = true; video.focus({ preventScroll: true }); wake() }
+        if (window.MXM_LENS) {
+            // VFX-JS transition: the lens flies into the card, then the player fades in over it
+            gsap.set([bg, video], { opacity: 0, x: 0, y: 0, scale: 1, rotation: 0 }); gsap.set(bar, { autoAlpha: 0 })
+            window.MXM_LENS.zoomIn(cards[i], {
+                handoff: () => gsap.to([bg, video], { opacity: 1, duration: .35, ease: 'power1.out' }),
+                done: () => { gsap.to(bar, { autoAlpha: 1, duration: .3 }); ready() },
+            })
+            return
+        }
+
         const from = cardTransform(i)
         cardMedia(i).style.visibility = 'hidden'
         gsap.set(video, { x: 0, y: 0, scale: 1, rotation: 0 })
-        gsap.timeline({ onComplete: () => { player.busy = false; video.controls = true; video.focus({ preventScroll: true }); wake() } })
+        gsap.timeline({ onComplete: ready })
             .fromTo(bg, { opacity: 0 }, { opacity: 1, duration: .5, ease: 'power2.out' }, 0)
             .fromTo(video, from, { x: 0, y: 0, scale: 1, rotation: 0, duration: reduceMotion ? .3 : .85, ease: 'expo.inOut' }, 0)
             .fromTo(bar, { autoAlpha: 0, y: -10 }, { autoAlpha: 1, y: 0, duration: .4 }, '-=.25')
@@ -212,9 +236,18 @@ window.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('is-playing')
             el.classList.remove('is-idle')
             player.open = false; player.busy = false
+            bgPlay(true)
             lenis.start()
             cards[i].querySelector('.card__btn').focus({ preventScroll: true })
             schedulePreview()
+        }
+        if (window.MXM_LENS) {
+            // fade the player away to reveal the zoomed card, then the lens pulls back out
+            window.MXM_LENS.zoomOut(cards[i], { delay: .3, done })
+            gsap.timeline({ onComplete: () => { el.hidden = true } })
+                .to(bar, { autoAlpha: 0, duration: .2 }, 0)
+                .to([video, bg], { opacity: 0, duration: .3, ease: 'power1.in' }, 0)
+            return
         }
         const tl = gsap.timeline({ onComplete: done })
         tl.to(bar, { autoAlpha: 0, duration: .2 }, 0)
@@ -239,9 +272,9 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!player.open || player.busy) return
         const prev = player.index
         const i = (prev + step + VIDEOS.length) % VIDEOS.length
-        cardMedia(prev).style.visibility = ''
+        if (!window.MXM_LENS) cardMedia(prev).style.visibility = ''
         scrollToCard(i)
-        cardMedia(i).style.visibility = 'hidden'
+        if (!window.MXM_LENS) cardMedia(i).style.visibility = 'hidden'
         gsap.fromTo(video, { opacity: .2 }, { opacity: 1, duration: .5, ease: 'power2.out' })
         load(i)
         wake()
