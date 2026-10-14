@@ -33,9 +33,11 @@ width = sum(p.x_advance for p in b.glyph_positions)
 JITTER = [(-1.6, 12, 1.02), (2.2, -14, .98), (-1.2, 8, 1.0), (2.6, -10, 1.02),
           (-2.0, 14, .98), (1.6, -8, 1.01), (-2.4, 10, .99), (2.0, -12, 1.02)]
 import math
+STRENGTH = 1.4                             # 1.0 = original subtle pass
 def nudge(i, line, x, base, name, adv):
     if line == 0: return (1, 0, 0, -1, x, base)
     deg, lift, s = JITTER[i]
+    deg, lift, s = deg * STRENGTH, lift * STRENGTH, 1 + (s - 1) * STRENGTH
     a = math.radians(deg); c, sn = math.cos(a) * s, math.sin(a) * s
     cx, cy = adv / 2, 350                      # pivot: glyph centre, mid x-height
     # font->svg: translate(x, base) * flipY * T(cx,cy) * R * S * T(-cx,-cy), then lift
