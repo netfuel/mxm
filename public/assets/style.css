@@ -82,7 +82,15 @@ html, body { overscroll-behavior: none; overflow: hidden; }
     /* sits on top of the front video: keep it legible over any frame */
     text-shadow: 0 0 .35em rgba(17, 15, 13, .55), 0 .04em .9em rgba(17, 15, 13, .45);
 }
-.lockup__name { color: var(--lime); }
+.lockup__name {
+    display: block;
+    width: 5.992em; height: 1.84em;   /* the wordmark's outlines at the old type size and .92 line height */
+    margin: 0 auto;
+    overflow: visible;
+    color: var(--lime);
+    /* SVG ignores text-shadow: same legibility halo as a filter */
+    filter: drop-shadow(0 0 .3em rgba(17, 15, 13, .5)) drop-shadow(0 .04em .6em rgba(17, 15, 13, .4));
+}
 .lockup span:not(.lockup__name) {
     display: inline-block;
     margin-top: 1.1em;
