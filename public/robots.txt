@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mxm-eho.pages.dev/sitemap.xml
