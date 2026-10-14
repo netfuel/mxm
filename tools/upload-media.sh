@@ -11,10 +11,15 @@ STATE="tools/.r2-uploaded"
 touch "$STATE"
 
 echo "== Cloudflare sign-in"
-if "${W[@]}" whoami 2>&1 | grep -qi "not authenticated"; then "${W[@]}" login || exit 1; fi
+"${W[@]}" whoami > tools/whoami.log 2>&1
+if ! grep -qi "associated with" tools/whoami.log; then
+  echo "Not signed in to Cloudflare. Run this from 'Upload videos to R2.command' so it can open the sign-in page."
+  exit 1
+fi
+grep -i "associated with" tools/whoami.log
 
 echo "== Upload media to R2 bucket '$BUCKET'"
-total=0; sent=0; failed=0
+total=0; sent=0; failed=0; streak=0
 while IFS= read -r f; do
   key="${f#media/}"
   sig="$key $(stat -f %z "$f") $(stat -f %m "$f")"
@@ -24,9 +29,11 @@ while IFS= read -r f; do
   printf '  %-75s %4s MB … ' "$key" "$(( $(stat -f %z "$f") / 1000000 ))"
   if "${W[@]}" r2 object put "$BUCKET/$key" --file "$f" --content-type "$ct" \
        --cache-control "public, max-age=604800" --remote >/tmp/mxm-put.log 2>&1; then
-    echo "$sig" >> "$STATE"; sent=$((sent+1)); echo ok
+    echo "$sig" >> "$STATE"; sent=$((sent+1)); streak=0; echo ok
   else
-    failed=$((failed+1)); echo FAILED; tail -3 /tmp/mxm-put.log | sed 's/^/      /'
+    failed=$((failed+1)); streak=$((streak+1)); echo FAILED
+    grep -v '^[[:space:]]*$' /tmp/mxm-put.log | tee -a tools/upload-error.log | sed 's/^/      /' | tail -12
+    if [ "$streak" -ge 3 ]; then echo "== Stopping after 3 failures in a row (details in tools/upload-error.log)"; break; fi
   fi
 done < <(find media -type f \( -name '*.mp4' -o -name '*.jpg' \) ! -name '*.part.*' | sort)
 echo "== $total files: $sent uploaded now, $failed failed, $((total-sent-failed)) already in R2"

@@ -9,3 +9,5 @@ tools/.r2-uploaded
 .wrangler/
 node_modules/
 .DS_Store
+tools/whoami.log
+tools/upload-error.log
