@@ -28,8 +28,6 @@ window.addEventListener('DOMContentLoaded', () => {
         </li>`).join('')
 
     const cards = [...cardsEl.querySelectorAll('.card')]
-    window.MXM_CARDS = cards
-    window.dispatchEvent(new Event('mxm:cards'))
 
     /* ---------- Smooth scroll ---------- */
     const lenis = new Lenis({ autoRaf: true })
@@ -202,15 +200,6 @@ window.addEventListener('DOMContentLoaded', () => {
         load(i) // play() inside the click gesture so sound is allowed
 
         const ready = () => { player.busy = false; video.controls = true; video.focus({ preventScroll: true }); wake() }
-        if (window.MXM_LENS) {
-            // VFX-JS transition: the lens flies into the card, then the player fades in over it
-            gsap.set([bg, video], { opacity: 0, x: 0, y: 0, scale: 1, rotation: 0 }); gsap.set(bar, { autoAlpha: 0 })
-            window.MXM_LENS.zoomIn(cards[i], {
-                handoff: () => gsap.to([bg, video], { opacity: 1, duration: .35, ease: 'power1.out' }),
-                done: () => { gsap.to(bar, { autoAlpha: 1, duration: .3 }); ready() },
-            })
-            return
-        }
 
         const from = cardTransform(i)
         cardMedia(i).style.visibility = 'hidden'
@@ -241,14 +230,6 @@ window.addEventListener('DOMContentLoaded', () => {
             cards[i].querySelector('.card__btn').focus({ preventScroll: true })
             schedulePreview()
         }
-        if (window.MXM_LENS) {
-            // fade the player away to reveal the zoomed card, then the lens pulls back out
-            window.MXM_LENS.zoomOut(cards[i], { delay: .3, done })
-            gsap.timeline({ onComplete: () => { el.hidden = true } })
-                .to(bar, { autoAlpha: 0, duration: .2 }, 0)
-                .to([video, bg], { opacity: 0, duration: .3, ease: 'power1.in' }, 0)
-            return
-        }
         const tl = gsap.timeline({ onComplete: done })
         tl.to(bar, { autoAlpha: 0, duration: .2 }, 0)
         if (onScreen(i)) {
@@ -272,9 +253,9 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!player.open || player.busy) return
         const prev = player.index
         const i = (prev + step + VIDEOS.length) % VIDEOS.length
-        if (!window.MXM_LENS) cardMedia(prev).style.visibility = ''
+        cardMedia(prev).style.visibility = ''
         scrollToCard(i)
-        if (!window.MXM_LENS) cardMedia(i).style.visibility = 'hidden'
+        cardMedia(i).style.visibility = 'hidden'
         gsap.fromTo(video, { opacity: .2 }, { opacity: 1, duration: .5, ease: 'power2.out' })
         load(i)
         wake()

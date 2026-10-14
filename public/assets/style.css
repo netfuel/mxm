@@ -47,10 +47,6 @@ body.is-playing { overflow: hidden; }
         radial-gradient(ellipse 60% 55% at 50% 50%, rgba(17, 15, 13, .55), rgba(17, 15, 13, 0) 70%),
         rgba(17, 15, 13, .6);
 }
-/* Cinematic lens (assets/vfx-lens.js): the page is redrawn in a WebGL canvas (z-index 2);
-   this layer above it maps clicks and hovers back through the lens. */
-.lens-hit { position: fixed; inset: 0; z-index: 5; display: none; }
-.vfx-on .lens-hit { display: block; }
 
 /* ---------- Drifting cards (adapted from MWG 094) ---------- */
 .mwg_effect094 { overflow: hidden; position: relative; }
