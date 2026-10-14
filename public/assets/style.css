@@ -23,13 +23,9 @@ ul { list-style: none; }
     --mono: 'IBM Plex Mono', ui-monospace, monospace;
     --sans: 'Inter', system-ui, sans-serif;
     --display: 'AT Crows', 'Inter', system-ui, sans-serif;
-    --card-w: 17vw;
     --safe-b: env(safe-area-inset-bottom, 0px);
 }
 
-html.lenis, html.lenis body { height: auto; }
-.lenis.lenis-smooth { scroll-behavior: auto !important; }
-.lenis.lenis-stopped { overflow: clip; }
 
 body {
     background: var(--bg);
@@ -48,19 +44,32 @@ body.is-playing { overflow: hidden; }
         rgba(17, 15, 13, .6);
 }
 
-/* ---------- Drifting cards (adapted from MWG 094) ---------- */
-.mwg_effect094 { overflow: hidden; position: relative; }
-.mwg_effect094 .container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    height: 100vh;
-    height: 100svh;
+/* ---------- Video sphere (adapted from MWG 107) ---------- */
+html, body { overscroll-behavior: none; overflow: hidden; }
+.mwg_effect107 {
+    position: relative;
     width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    --cw: 17vw;
+    --ch: calc(var(--cw) * 9 / 16);
 }
+.mwg_effect107:active { cursor: grabbing; }
+.mwg_effect107 .sphere-container {
+    position: absolute; inset: 0;
+    perspective-origin: center center;
+}
+.mwg_effect107 .sphere { position: absolute; inset: 0; }
+
 .lockup {
     position: absolute;
     top: 50%; left: 50%;
+    z-index: 3;
     transform: translate(-50%, -50%);
     text-align: center;
     font-family: var(--display);
@@ -70,6 +79,8 @@ body.is-playing { overflow: hidden; }
     line-height: .92;
     white-space: nowrap;
     pointer-events: none;
+    /* sits on top of the front video: keep it legible over any frame */
+    text-shadow: 0 0 .35em rgba(17, 15, 13, .55), 0 .04em .9em rgba(17, 15, 13, .45);
 }
 .lockup__name { color: var(--lime); }
 .lockup span:not(.lockup__name) {
@@ -78,53 +89,49 @@ body.is-playing { overflow: hidden; }
     font: 400 1.9vh/1 var(--mono);
     letter-spacing: .14em;
     text-transform: uppercase;
-    color: var(--dim);
+    color: var(--ink);
+    opacity: .75;
 }
 .hint {
     position: absolute;
     left: 50%; bottom: calc(96px + var(--safe-b));
+    z-index: 3;
     transform: translateX(-50%);
     font: 400 11px/1 var(--mono);
     letter-spacing: .3em;
     text-transform: uppercase;
     color: var(--dim);
     pointer-events: none;
+    white-space: nowrap;
     transition: opacity .4s ease;
 }
 .hint.is-gone { opacity: 0; }
-.hint::after {
-    content: '';
-    display: block;
-    width: 1px; height: 28px;
-    margin: 10px auto 0;
-    background: linear-gradient(var(--dim), transparent);
-    animation: hint 1.8s ease-in-out infinite;
-    transform-origin: top;
-}
-@keyframes hint { 0%,100% { transform: scaleY(.3); opacity: .4; } 50% { transform: scaleY(1); opacity: 1; } }
 
-.mwg_effect094 .cards {
-    display: flex;
-    width: max-content;
-    white-space: nowrap;
-    gap: 1.6vw;
-    will-change: transform;
-    padding: 0 105vw;
-    align-items: center;
+.card {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: var(--cw); height: var(--ch);
+    margin-left: calc(var(--cw) / -2);
+    margin-top: calc(var(--ch) / -2);
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
-.card { position: relative; width: var(--card-w); flex: none; }
 .card__btn {
     display: block;
-    width: 100%;
-    text-align: left;
+    width: 100%; height: 100%;
     border-radius: .5vw;
-    outline-offset: 6px;
+    outline-offset: 4px;
+    cursor: pointer;
 }
-.card__btn:focus-visible { outline: 2px solid var(--ink); }
+.card__btn:focus-visible { outline: 2px solid var(--lime); }
 .card__media {
     position: relative;
     display: block;
-    aspect-ratio: 16 / 9;
+    width: 100%; height: 100%;
     border-radius: .5vw;
     overflow: hidden;
     background: #1d1a16;
@@ -135,6 +142,8 @@ body.is-playing { overflow: hidden; }
     width: 100%; height: 100%;
     object-fit: cover;
     display: block;
+    -webkit-user-drag: none;
+    pointer-events: none;
 }
 .card__media video { opacity: 0; transition: opacity .4s ease; }
 .card.is-previewing .card__media video { opacity: 1; }
@@ -142,12 +151,10 @@ body.is-playing { overflow: hidden; }
     position: absolute;
     inset: 0;
     margin: auto;
-    width: 3.2vw; height: 3.2vw;
-    min-width: 36px; min-height: 36px;
+    width: 22%; aspect-ratio: 1;
+    max-width: 52px; min-width: 22px;
     border-radius: 50%;
-    background: rgba(17, 15, 13, .55);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(17, 15, 13, .6);
     display: grid; place-items: center;
     opacity: 0;
     transform: scale(.8);
@@ -155,17 +162,16 @@ body.is-playing { overflow: hidden; }
 }
 .card__play svg { width: 40%; height: 40%; fill: var(--ink); margin-left: 8%; }
 .card__btn:hover .card__play,
-.card__btn:focus-visible .card__play,
-.card.is-previewing .card__play { opacity: 1; transform: none; }
-.card__cap {
-    display: block;
-    margin-top: .7em;
-    font: 400 10.5px/1.35 var(--mono);
-    letter-spacing: .06em;
-    white-space: normal;
+.card__btn:focus-visible .card__play { opacity: 1; transform: none; }
+
+@media (min-width: 501px) and (max-width: 1400px) {
+    .mwg_effect107 { --cw: 240px; }
+    .card__btn, .card__media { border-radius: 6px; }
 }
-.card__cap b { display: block; font-weight: 500; color: var(--ink); text-transform: uppercase; letter-spacing: .1em; }
-.card__cap i { font-style: normal; color: var(--dim); }
+@media (max-width: 500px) {
+    .mwg_effect107 { --cw: 92px; }
+    .card__btn, .card__media { border-radius: 4px; }
+}
 
 /* ---------- Player ---------- */
 .player { position: fixed; inset: 0; z-index: 50; }
@@ -243,15 +249,10 @@ body.is-playing { overflow: hidden; }
 body.is-playing .social { opacity: 0; pointer-events: none; transform: translate(-50%, 12px); }
 
 @media (max-width: 768px) {
-    :root { --card-w: 52vw; }
     .lockup { font-size: 13vw; }
     .lockup span:not(.lockup__name) { font-size: 2.5vw; letter-spacing: .1em; }
-    .card__media, .card__btn { border-radius: 1.4vw; }
     .player__actions { gap: 2px; }
     .pbtn { width: 36px; height: 36px; }
-}
-@media (max-width: 768px) and (orientation: landscape) {
-    :root { --card-w: 28vw; }
 }
 @media (prefers-reduced-motion: reduce) {
     .hint::after { animation: none; }
