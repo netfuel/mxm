@@ -214,8 +214,10 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!card) return
         const vid = card.querySelector('video')
         if (!vid.src) vid.src = url(VIDEOS[card.dataset.i], 'preview.mp4')
-        const p = vid.play()
-        if (p) p.then(() => card === previewing && card.classList.add('is-previewing')).catch(() => {})
+        // reveal the loop once it's actually playing (the 'playing' event fires even when play()'s promise doesn't settle)
+        if (!vid._wired) { vid._wired = true; vid.addEventListener('playing', () => { if (previewing === card) card.classList.add('is-previewing') }) }
+        vid.play().catch(() => {})
+        if (!vid.paused && vid.readyState > 2) card.classList.add('is-previewing')
     }
     if (finePointer) {
         cards.forEach(c => {
