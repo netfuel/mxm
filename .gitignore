@@ -1,0 +1,11 @@
+# Video lives in the Cloudflare R2 bucket "mxm", not in git (upload with "Upload videos to R2.command")
+/media/
+/public/media
+tools/_work/
+tools/_chunks/
+tools/encode.log
+tools/upload.log
+tools/.r2-uploaded
+.wrangler/
+node_modules/
+.DS_Store

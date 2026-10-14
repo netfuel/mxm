@@ -1,0 +1,10 @@
+# Cloudflare Pages project, deployed from GitHub (netfuel/mxm) on every push to main.
+# Dashboard build settings: framework none, build command empty, output directory "public".
+name = "mxm"
+pages_build_output_dir = "public"
+compatibility_date = "2025-09-01"
+
+# Videos, posters and previews live in R2 and are served at /media/* by functions/media/[[path]].js
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "mxm"
