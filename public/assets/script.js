@@ -163,6 +163,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- Input ---------- */
     const hint = root.querySelector('.hint')
+    const SPEED = .7   // spin speed for scroll, drag and arrow keys (1 = original)
     let dragDist = 0
     const onInput = () => {
         if (!moving) { moving = true; rebase() }
@@ -176,14 +177,14 @@ window.addEventListener('DOMContentLoaded', () => {
         onWheel: e => {
             if (locked || player.open) return
             onInput()
-            target.y -= e.deltaX / 10; target.x -= e.deltaY / 10
+            target.y -= e.deltaX / 10 * SPEED; target.x -= e.deltaY / 10 * SPEED
             quickY(target.y); quickX(target.x)
         },
         onDrag: e => {
             if (locked || player.open) return
             dragDist += Math.abs(e.deltaX) + Math.abs(e.deltaY)
             onInput()
-            const f = isTouch ? 1 : .25
+            const f = (isTouch ? 1 : .25) * SPEED
             target.y += e.deltaX * f; target.x += e.deltaY * f
             quickY(target.y); quickX(target.x)
         },
@@ -194,7 +195,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', e => {
         if (player.open || locked || !/^Arrow/.test(e.key)) return
         e.preventDefault(); onInput()
-        const step = 18
+        const step = 18 * SPEED
         if (e.key === 'ArrowLeft') target.y += step
         if (e.key === 'ArrowRight') target.y -= step
         if (e.key === 'ArrowUp') target.x += step
