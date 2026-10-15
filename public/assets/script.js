@@ -12,11 +12,11 @@ window.addEventListener('DOMContentLoaded', () => {
     const player = { open: false, index: -1, busy: false, card: null }
     let previewing = null, hovered = null
 
-    /* ---------- Build cards: each video appears 4× so the sphere reads as full ---------- */
+    /* ---------- Build cards: each video repeats so the sphere reads as full ---------- */
     const root = document.querySelector('.mwg_effect107')
     const sphere = root.querySelector('.sphere')
     const sphereContainer = root.querySelector('.sphere-container')
-    const COPIES = 4
+    const COPIES = Math.max(2, Math.round(60 / VIDEOS.length))   // keep the sphere around 60 cards
     const items = []
     for (let k = 0; k < VIDEOS.length * COPIES; k++) items.push(k % VIDEOS.length)
 

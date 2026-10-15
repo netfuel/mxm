@@ -49,6 +49,38 @@ window.VIDEOS = [
   "placeholder": false
  },
  {
+  "slug": "MarceauxMarceaux-Bloghaus",
+  "title": "Bloghaus",
+  "artist": "MarceauxMarceaux",
+  "set": "Originals",
+  "media": "MarceauxMarceaux-Bloghaus",
+  "placeholder": false
+ },
+ {
+  "slug": "MarceauxMarceaux-Cold-Air-Wave",
+  "title": "Cold Air Wave",
+  "artist": "MarceauxMarceaux",
+  "set": "Originals",
+  "media": "MarceauxMarceaux-Cold-Air-Wave",
+  "placeholder": false
+ },
+ {
+  "slug": "MarceauxMarceaux-Daytona",
+  "title": "Daytona",
+  "artist": "MarceauxMarceaux",
+  "set": "Originals",
+  "media": "MarceauxMarceaux-Daytona",
+  "placeholder": false
+ },
+ {
+  "slug": "MarceauxMarceaux-This-is-a-House",
+  "title": "This Is a House",
+  "artist": "MarceauxMarceaux",
+  "set": "Originals",
+  "media": "MarceauxMarceaux-This-is-a-House",
+  "placeholder": false
+ },
+ {
   "slug": "Kevin-Saunderson-Future-Kenny-Larkin-vs-MarceauMarceaux",
   "title": "Future (Kenny Larkin vs MarceauxMarceaux)",
   "artist": "Kevin Saunderson",
