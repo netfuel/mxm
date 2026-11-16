@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /u
+Disallow: /c
 
 Sitemap: https://mxm-eho.pages.dev/sitemap.xml

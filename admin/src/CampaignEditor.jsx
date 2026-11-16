@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { api, fmtDate, loadVideos, n } from './api.js'
 import { Confirm, Field, Modal, useDebounced, useToast } from './ui.jsx'
+import UploadButton, { fileName } from './Upload.jsx'
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
@@ -96,6 +97,24 @@ export default function CampaignEditor({ id, stats, me }) {
               </Field>
             </div>
             <div className="card">
+              <h2>Artwork <span className="saved" style={{ fontWeight: 400 }}>optional</span></h2>
+              <div className="art-row">
+                {c.artwork.url ? <img className="art-thumb" src={c.artwork.url} alt="" /> : <div className="art-thumb empty">No art</div>}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Field label="Image" hint="Square album art works best. JPG, PNG or WebP; shown up to 360 px wide.">
+                    <div className="inline">
+                      <input className="input" value={c.artwork.url} onChange={e => setC({ artwork: { ...c.artwork, url: e.target.value } })} placeholder="https://… or upload" />
+                      <UploadButton kind="artwork" accept="image/jpeg,image/png,image/gif,image/webp" onDone={r => setC({ artwork: { ...c.artwork, url: r.url } })} />
+                    </div>
+                  </Field>
+                  <Field label="Links to (optional)" hint="Where a click on the art goes, like the release on Bandcamp.">
+                    <input className="input" value={c.artwork.link} onChange={e => setC({ artwork: { ...c.artwork, link: e.target.value } })} placeholder="https://marceauxmarceaux.bandcamp.com/album/…" /></Field>
+                  <Field label="Description (for screen readers)">
+                    <input className="input" value={c.artwork.alt} onChange={e => setC({ artwork: { ...c.artwork, alt: e.target.value } })} placeholder="Bloghaus cover art" /></Field>
+                </div>
+              </div>
+            </div>
+            <div className="card">
               <h2>Message</h2>
               <Field label="Heading"><input className="input" value={c.heading} onChange={e => setC({ heading: e.target.value })} placeholder="Hey {{name|there}}," /></Field>
               <Field label="Body"><textarea className="textarea body" value={c.body} onChange={e => setC({ body: e.target.value })}
@@ -105,8 +124,20 @@ export default function CampaignEditor({ id, stats, me }) {
                 <Field label="Button label"><input className="input" value={c.button.label} onChange={e => setC({ button: { ...c.button, label: e.target.value } })} placeholder="Listen on Bandcamp" /></Field>
                 <Field label="Button link"><input className="input" value={c.button.url} onChange={e => setC({ button: { ...c.button, url: e.target.value } })} placeholder="https://marceauxmarceaux.bandcamp.com/…" /></Field>
               </div>
-              <Field label="Header image URL (optional)" hint="A wide image shown above the heading. Use a full https:// link.">
-                <input className="input" value={c.image} onChange={e => setC({ image: e.target.value })} placeholder="https://…" /></Field>
+            </div>
+            <div className="card">
+              <h2>Download <span className="saved" style={{ fontWeight: 400 }}>optional</span></h2>
+              <Field label="File" hint="Upload up to 95 MB, or paste a Dropbox, Google Drive or Bandcamp code link for bigger files.">
+                <div className="inline">
+                  <input className="input" value={c.download.url} onChange={e => setC({ download: { ...c.download, url: e.target.value } })} placeholder="https://… or upload" />
+                  <UploadButton kind="download" onDone={r => setC({ download: { ...c.download, url: r.url, label: c.download.label || 'Download' } })} />
+                </div>
+                {c.download.url && fileName(c.download.url) && <small>File: {fileName(c.download.url)}</small>}
+              </Field>
+              <div className="row">
+                <Field label="Button label"><input className="input" value={c.download.label} onChange={e => setC({ download: { ...c.download, label: e.target.value } })} placeholder="Download Bloghaus (WAV)" /></Field>
+              </div>
+              <Field label="Note (optional)"><input className="input" value={c.download.note} onChange={e => setC({ download: { ...c.download, note: e.target.value } })} placeholder="Free for DJs. Please don't share the file." /></Field>
             </div>
             <VideoPicker value={c.videos} title={c.videosTitle} onChange={(videos) => setC({ videos })} onTitle={t => setC({ videosTitle: t })} />
           </fieldset>
@@ -163,6 +194,7 @@ function SentPanel({ camp, onRetry }) {
         <div className="stat"><b>{n(camp.failed_count)}</b><span>Failed</span></div>
         <div className="stat"><b>{n(camp.total)}</b><span>Audience</span></div>
       </div>
+      <a className="btn sm" href={`#/stats/${camp.id}`} style={{ marginBottom: camp.failed_count ? 14 : 0 }}>See who clicked what</a>
       {camp.failed_count > 0 && <>
         <div className="sample">{fails ? fails.map(f => `${f.email}: ${f.error}`).join('\n') : 'Loading…'}</div>
         <button className="btn sm" onClick={onRetry}>Retry failed</button>

@@ -5,6 +5,7 @@ import Subscribers from './Subscribers.jsx'
 import Campaigns from './Campaigns.jsx'
 import CampaignEditor from './CampaignEditor.jsx'
 import Settings from './Settings.jsx'
+import Stats from './Stats.jsx'
 
 // Hash routes: #/campaigns, #/campaigns/12, #/subscribers, #/settings
 function useRoute() {
@@ -31,6 +32,7 @@ export default function App() {
   const nav = [
     ['campaigns', 'Campaigns', null],
     ['subscribers', 'Subscribers', stats ? n(stats.counts.subscribed) : ''],
+    ['stats', 'Stats', null],
     ['settings', 'Settings', null],
   ]
   return (
@@ -57,6 +59,7 @@ export default function App() {
           {section === 'subscribers' && <Subscribers stats={stats} onChange={refresh} />}
           {section === 'campaigns' && !id && <Campaigns />}
           {section === 'campaigns' && id && <CampaignEditor id={+id} stats={stats} me={me} />}
+          {section === 'stats' && <Stats id={id ? +id : null} />}
           {section === 'settings' && <Settings me={me} onSaved={refresh} />}
         </main>
       </div>

@@ -20,7 +20,8 @@ export async function onRequest(ctx) {
 async function route({ request, env, params, data }) {
   const parts = (Array.isArray(params.path) ? params.path : [params.path]).filter(Boolean)
   const method = request.method
-  const body = method === 'GET' || method === 'DELETE' ? {} : await request.json().catch(() => { throw httpError(400, 'Request body must be JSON') })
+  const isUpload = parts[0] === 'uploads'
+  const body = method === 'GET' || method === 'DELETE' || isUpload ? {} : await request.json().catch(() => { throw httpError(400, 'Request body must be JSON') })
   const url = new URL(request.url)
   const d = await db(env)
   const [a, b, c] = parts
@@ -29,7 +30,7 @@ async function route({ request, env, params, data }) {
     const s = await getSettings(env)
     return ok({ user: data.user, sender: senderMode(env), ready: !!(s.from_email && s.mailing_address) })
   }
-  if (a === 'stats' && method === 'GET') return ok(await stats(d))
+  if (a === 'stats' && !b && method === 'GET') return ok(await stats(d))
   if (a === 'settings') {
     if (method === 'GET') return ok(await getSettings(env))
     if (method === 'PUT') return ok(await saveSettings(env, d, body))
@@ -42,10 +43,12 @@ async function route({ request, env, params, data }) {
     if (b === 'export' && method === 'GET') return exportCsv(d, url.searchParams)
     if (b && /^\d+$/.test(b) && method === 'PATCH') return ok(await updateSubscriber(d, +b, body))
     if (b && /^\d+$/.test(b) && method === 'DELETE') {
-      await d.batch([d.prepare('DELETE FROM sends WHERE subscriber_id = ?').bind(+b), d.prepare('DELETE FROM subscribers WHERE id = ?').bind(+b)])
+      await d.batch([d.prepare('DELETE FROM sends WHERE subscriber_id = ?').bind(+b), d.prepare('DELETE FROM clicks WHERE subscriber_id = ?').bind(+b), d.prepare('DELETE FROM subscribers WHERE id = ?').bind(+b)])
       return ok({ deleted: 1 })
     }
   }
+  if (a === 'uploads' && method === 'POST') return ok(await upload(env, request, url.searchParams))
+  if (a === 'stats' && b === 'campaigns' && method === 'GET') return ok(await campaignStats(d))
   if (a === 'preview' && method === 'POST') {
     const s = await getSettings(env)
     const r = renderEmail({ subject: body.subject || '', content: body.content, settings: s,
@@ -54,7 +57,8 @@ async function route({ request, env, params, data }) {
   }
   if (a === 'outbox' && method === 'GET') {
     if (senderMode(env) !== 'dry-run') throw httpError(404, 'Not found')
-    const { results } = await d.prepare('SELECT id, to_addr, subject, headers, created_at FROM outbox ORDER BY id DESC LIMIT 200').all()
+    const cols = url.searchParams.get('full') ? '*' : 'id, to_addr, subject, headers, created_at'
+    const { results } = await d.prepare(`SELECT ${cols} FROM outbox ORDER BY id DESC LIMIT 200`).all()
     return ok({ items: results })
   }
   if (a === 'campaigns') {
@@ -74,7 +78,8 @@ async function route({ request, env, params, data }) {
     if (!c && method === 'DELETE') {
       const camp = await getCampaign(d, id)
       if (camp.status === 'sending') throw httpError(409, 'This campaign is sending. Let it finish first.')
-      await d.batch([d.prepare('DELETE FROM sends WHERE campaign_id = ?').bind(id), d.prepare('DELETE FROM campaigns WHERE id = ?').bind(id)])
+      await d.batch(['sends', 'campaign_links', 'clicks'].map(t => d.prepare(`DELETE FROM ${t} WHERE campaign_id = ?`).bind(id))
+        .concat(d.prepare('DELETE FROM campaigns WHERE id = ?').bind(id)))
       return ok({ deleted: 1 })
     }
     if (c === 'duplicate' && method === 'POST') {
@@ -97,6 +102,8 @@ async function route({ request, env, params, data }) {
       ])
       return ok(await progress(d, id))
     }
+    if (c === 'report' && method === 'GET') return ok(await report(d, id, url.searchParams))
+    if (c === 'report.csv' && method === 'GET') return reportCsv(d, id)
     if (c === 'failures' && method === 'GET') {
       const { results } = await d.prepare(`SELECT s.email, x.error, x.sent_at FROM sends x JOIN subscribers s ON s.id = x.subscriber_id
         WHERE x.campaign_id = ? AND x.status = 'failed' ORDER BY s.email LIMIT 500`).bind(id).all()
@@ -122,7 +129,7 @@ async function saveSettings(env, d, body) {
     if (bad.length) throw httpError(400, `Not valid: ${bad.join(', ')}`)
     v.test_emails = list.map(cleanEmail).join(', ')
   }
-  if (v.site_url && !/^https:\/\/[^/]+/.test(v.site_url)) throw httpError(400, 'Site URL must start with https://')
+  if (v.site_url && !/^(https:\/\/[^/]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)/.test(v.site_url)) throw httpError(400, 'Site URL must start with https://')
   const stmts = Object.entries(v).map(([k, val]) =>
     d.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(k, val))
   if (stmts.length) await d.batch(stmts)
@@ -250,7 +257,7 @@ async function bulk(d, body) {
     let stmts
     switch (body.action) {
       case 'delete':
-        stmts = [d.prepare(`DELETE FROM sends WHERE subscriber_id IN (${ph})`).bind(...chunk), d.prepare(`DELETE FROM subscribers WHERE id IN (${ph})`).bind(...chunk)]; break
+        stmts = [d.prepare(`DELETE FROM sends WHERE subscriber_id IN (${ph})`).bind(...chunk), d.prepare(`DELETE FROM clicks WHERE subscriber_id IN (${ph})`).bind(...chunk), d.prepare(`DELETE FROM subscribers WHERE id IN (${ph})`).bind(...chunk)]; break
       case 'unsubscribe':
         stmts = [d.prepare(`UPDATE subscribers SET status = 'unsubscribed', unsubscribed_at = datetime('now'), updated_at = datetime('now') WHERE status != 'unsubscribed' AND id IN (${ph})`).bind(...chunk)]; break
       case 'resubscribe':
@@ -313,9 +320,11 @@ function senderFrom(s) {
   return { address, name: s.from_name || '' }
 }
 
-function buildMessage(camp, s, sub) {
+// track = true for real sends: every link becomes a per-subscriber /c?… redirect. Tests use the plain links.
+function buildMessage(camp, s, sub, track = false) {
   const unsubscribeUrl = `${site(s)}/u?t=${encodeURIComponent(sub.token)}`
-  const r = renderEmail({ subject: camp.subject, content: camp.content, settings: s, sub, unsubscribeUrl })
+  const r = renderEmail({ subject: camp.subject, content: camp.content, settings: s, sub, unsubscribeUrl,
+    track: track ? { base: site(s), campaignId: camp.id, token: sub.token } : null })
   return {
     to: sub.email, from: senderFrom(s), replyTo: cleanEmail(s.reply_to) || undefined,
     subject: r.subject, html: r.html, text: r.text,
@@ -351,6 +360,12 @@ async function startCampaign(env, d, id) {
   // Claim the draft first so two clicks can't start it twice
   const claim = await d.prepare(`UPDATE campaigns SET status = 'sending', started_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND status = 'draft'`).bind(id).run()
   if (!claim.meta.changes) throw httpError(409, 'This campaign has already been started.')
+  // Record every link in the email so the click redirect only goes where the campaign points
+  const links = new Map()
+  renderEmail({ subject: camp.subject, content: camp.content, settings: s, sub: { email: '', name: '', token: 'x' }, unsubscribeUrl: '', links })
+  const linkRows = [...links].map(([u, label], i) =>
+    d.prepare('INSERT OR REPLACE INTO campaign_links (campaign_id, url, label, position) VALUES (?,?,?,?)').bind(id, u, label.slice(0, 200), i))
+  if (linkRows.length) await d.batch(linkRows)
   await d.prepare(`INSERT OR IGNORE INTO sends (campaign_id, subscriber_id) SELECT ?, id FROM subscribers WHERE ${w}`).bind(id, ...args).run()
   const total = await d.prepare('SELECT COUNT(*) n FROM sends WHERE campaign_id = ?').bind(id).first('n')
   await d.prepare('UPDATE campaigns SET total = ? WHERE id = ?').bind(total, id).run()
@@ -401,7 +416,7 @@ async function sendBatch(env, d, id) {
         updates.push(d.prepare(`UPDATE sends SET status = 'skipped', error = 'No longer subscribed' WHERE campaign_id = ? AND subscriber_id = ?`).bind(id, sid)); continue
       }
       try {
-        const r = await deliver(env, buildMessage(camp, s, sub))
+        const r = await deliver(env, buildMessage(camp, s, sub, true))
         updates.push(d.prepare(`UPDATE sends SET status = 'sent', message_id = ?, error = NULL, sent_at = datetime('now') WHERE campaign_id = ? AND subscriber_id = ?`).bind(r.messageId || '', id, sid))
       } catch (e) {
         if (e instanceof SendError && (e.fatal || e.retry)) {
@@ -423,4 +438,79 @@ async function sendBatch(env, d, id) {
   if (stop === 'rate') return { ...p, backoff }
   if (stop) return { ...p, error: stop }
   return p
+}
+
+/* ---------------- Uploads (artwork, downloads) to R2 ---------------- */
+const UPLOAD_MAX = 95 * 1024 * 1024   // Cloudflare caps a request body at 100 MB
+async function upload(env, request, params) {
+  if (!env.MEDIA) throw httpError(503, 'The R2 bucket is not bound (MEDIA).')
+  const kind = params.get('kind') === 'artwork' ? 'artwork' : 'download'
+  // Original name (for the download's filename) and a URL-safe version for the storage key
+  const original = String(params.get('name') || 'file').replace(/[\\/"\r\n]+/g, '').trim().slice(-120) || 'file'
+  const name = original.normalize('NFKD').replace(/[^\w.\- ]+/g, '').replace(/[\s-]+/g, '-').replace(/^-|-$/g, '').slice(-90) || 'file'
+  const size = Number(request.headers.get('content-length') || 0)
+  if (size > UPLOAD_MAX) throw httpError(413, 'That file is over 95 MB. Upload it to Dropbox or Google Drive and paste the share link instead.')
+  const type = request.headers.get('content-type') || 'application/octet-stream'
+  if (kind === 'artwork' && !/^image\/(jpeg|png|gif|webp)$/.test(type)) throw httpError(400, 'Artwork must be a JPG, PNG, GIF or WebP image.')
+  const rand = crypto.getRandomValues(new Uint8Array(6)).reduce((s, b) => s + b.toString(16).padStart(2, '0'), '')
+  const key = `uploads/${kind}/${new Date().toISOString().slice(0, 7)}/${rand}-${name}`
+  const obj = await env.MEDIA.put(key, request.body, {
+    httpMetadata: { contentType: type, ...(kind === 'download' ? { contentDisposition: `attachment; filename="${name}"; filename*=UTF-8''${encodeURIComponent(original).replace(/['()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase())}` } : {}) },
+  })
+  const s = await getSettings(env)
+  return { url: `${site(s)}/media/${key}`, key, size: obj?.size ?? size, name: original }
+}
+
+/* ---------------- Click stats ---------------- */
+async function campaignStats(d) {
+  const { results } = await d.prepare(`
+    SELECT c.id, c.subject, c.status, c.audience, c.total, c.sent_count, c.started_at, c.finished_at,
+      (SELECT COUNT(DISTINCT subscriber_id) FROM clicks k WHERE k.campaign_id = c.id) AS clickers,
+      (SELECT COALESCE(SUM(clicks), 0) FROM clicks k WHERE k.campaign_id = c.id) AS clicks,
+      (SELECT COUNT(DISTINCT k.subscriber_id) FROM clicks k JOIN campaign_links l ON l.campaign_id = k.campaign_id AND l.url = k.url
+         WHERE k.campaign_id = c.id AND l.label LIKE '%Download:%') AS downloaders
+    FROM campaigns c WHERE c.status != 'draft' ORDER BY COALESCE(c.started_at, c.created_at) DESC`).all()
+  return { items: results }
+}
+
+async function report(d, id, params) {
+  const camp = await getCampaign(d, id)
+  const { results: links } = await d.prepare(`
+    SELECT l.url, l.label, l.position, COUNT(k.subscriber_id) AS people, COALESCE(SUM(k.clicks), 0) AS clicks
+    FROM campaign_links l LEFT JOIN clicks k ON k.campaign_id = l.campaign_id AND k.url = l.url
+    WHERE l.campaign_id = ? GROUP BY l.url ORDER BY people DESC, l.position`).bind(id).all()
+  const only = params.get('url')
+  const { results: rows } = await d.prepare(`
+    SELECT s.id, s.email, s.name, k.url, k.clicks, k.first_at, k.last_at
+    FROM clicks k JOIN subscribers s ON s.id = k.subscriber_id
+    WHERE k.campaign_id = ? ${only ? 'AND k.url = ?' : ''} ORDER BY k.last_at DESC LIMIT 5000`).bind(...(only ? [id, only] : [id])).all()
+  const label = new Map(links.map(l => [l.url, l.label]))
+  const people = new Map()
+  for (const r of rows) {
+    const p = people.get(r.id) || { id: r.id, email: r.email, name: r.name, links: [], clicks: 0, first_at: r.first_at, last_at: r.last_at }
+    p.links.push(label.get(r.url) || r.url); p.clicks += r.clicks
+    if (r.first_at < p.first_at) p.first_at = r.first_at
+    if (r.last_at > p.last_at) p.last_at = r.last_at
+    people.set(r.id, p)
+  }
+  const clickers = (await d.prepare('SELECT COUNT(DISTINCT subscriber_id) n FROM clicks WHERE campaign_id = ?').bind(id).first('n')) || 0
+  return {
+    campaign: { id: camp.id, subject: camp.subject, status: camp.status, audience: camp.audience, total: camp.total, sent: camp.sent_count, failed: camp.failed_count, started_at: camp.started_at, finished_at: camp.finished_at },
+    clickers, links, people: [...people.values()],
+  }
+}
+
+async function reportCsv(d, id) {
+  const camp = await getCampaign(d, id)
+  const { results } = await d.prepare(`
+    SELECT s.email, s.name, l.label, k.url, k.clicks, k.first_at, k.last_at
+    FROM clicks k JOIN subscribers s ON s.id = k.subscriber_id
+    LEFT JOIN campaign_links l ON l.campaign_id = k.campaign_id AND l.url = k.url
+    WHERE k.campaign_id = ? ORDER BY s.email, l.position`).bind(id).all()
+  const cell = v => { const x = String(v ?? ''); return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x }
+  const lines = ['email,name,link,url,clicks,first_click,last_click', ...results.map(r =>
+    [r.email, r.name, r.label, r.url, r.clicks, r.first_at, r.last_at].map(cell).join(','))]
+  const slug = (camp.subject || `campaign-${id}`).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
+  return new Response(lines.join('\n') + '\n', { headers: {
+    'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="clicks-${slug}.csv"` } })
 }

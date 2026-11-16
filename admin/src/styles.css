@@ -170,3 +170,16 @@ table.t { width: 100%; border-collapse: collapse; }
 .steps li { margin-bottom: 6px; } .steps li.done { color: var(--ink); }
 .steps li.done::marker { color: var(--lime); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.inline { display: flex; gap: 8px; } .inline .input { flex: 1; min-width: 0; }
+.art-row { display: flex; gap: 16px; align-items: flex-start; }
+.art-thumb { width: 96px; height: 96px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--line-2); background: var(--bg); }
+.art-thumb.empty { display: grid; place-items: center; font: 11px var(--mono); color: var(--faint); }
+@media (max-width: 520px) { .art-row { flex-direction: column; } }
+.bar { height: 6px; border-radius: 999px; background: var(--bg); overflow: hidden; min-width: 80px; }
+.bar i { display: block; height: 100%; background: var(--lime); }
+.t tr.clickable { cursor: pointer; }
+.t tr.active td { background: rgba(198,255,0,.06); }
+.linkurl { display: block; font: 12px var(--mono); color: var(--faint); max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.section-title { display: flex; justify-content: space-between; align-items: center; margin: 26px 0 10px; gap: 12px; flex-wrap: wrap; }
+.section-title h2 { margin: 0; font-size: 16px; font-weight: 700; }

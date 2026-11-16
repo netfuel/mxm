@@ -8,6 +8,7 @@ Cloudflare Email Service, and every email carries a personal unsubscribe link at
 | React admin (source) | `admin/` (build with `cd admin && npm install && npm run build` → `public/admin/`) |
 | API | `functions/admin/api/[[path]].js`, guarded by `functions/admin/_middleware.js` |
 | Unsubscribe page | `functions/u.js` |
+| Click tracking redirect | `functions/c.js` |
 | Shared code | `lib/mail/` (schema, Access check, email template, sender) |
 | Data | Cloudflare D1 database bound as `DB` (tables are created on first request) |
 
@@ -43,6 +44,19 @@ Until the steps below are done, `/admin` shows "not set up yet" and stays locked
   Imports and "Add" never re-subscribe them.
 - Cloudflare starts new senders on low limits. If a batch hits a rate limit, the admin waits and keeps going.
   If the daily limit is hit, it stops with the error, and you can resume the next day.
+
+## Artwork, downloads and stats
+
+- **Artwork:** album art shown at the top of the email (up to 360 px wide). You can link it, for example to the release on Bandcamp.
+  Paste an image URL or upload one.
+- **Download:** a separate download button with an optional note. Uploads up to 95 MB go to the R2 bucket under `uploads/`
+  and download with their original filename. For bigger files, paste a Dropbox, Google Drive or Bandcamp download-code link.
+- **Stats:** every link in a sent email goes through `/c`, which records who clicked and then redirects.
+  It only redirects to links that were actually in that campaign, so it can't be used as an open redirect.
+  The Stats page lists each campaign's delivered count, people who clicked, click rate and downloads.
+  Open a campaign to see each link and exactly who clicked it, and to export a clicks CSV.
+  Clicks are counted per destination: when the artwork, a body link and the button all go to the same Bandcamp page, they share one row.
+  Test sends use plain links and aren't counted. Some mail security scanners open links to check them, so a few clicks can come from software.
 
 ## Local development
 
