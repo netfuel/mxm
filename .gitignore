@@ -11,3 +11,5 @@ node_modules/
 .DS_Store
 tools/whoami.log
 tools/upload-error.log
+.dev.vars
+admin/node_modules/

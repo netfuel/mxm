@@ -8,3 +8,16 @@ compatibility_date = "2025-09-01"
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "mxm"
+
+# ---- Mail admin (/admin) --------------------------------------------------------------
+# Leave commented until the D1 database exists: a placeholder ID would fail the deploy.
+# See docs/mail-setup.md. Secret CF_EMAIL_TOKEN is set in the dashboard, never here.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "mxm-mail"
+# database_id = "PASTE-D1-DATABASE-ID"
+#
+# [vars]
+# ACCESS_TEAM_DOMAIN = "yourteam.cloudflareaccess.com"
+# ACCESS_AUD = "PASTE-ACCESS-APPLICATION-AUD-TAG"
+# CF_ACCOUNT_ID = "PASTE-ACCOUNT-ID"
