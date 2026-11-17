@@ -18,6 +18,6 @@ database_id = "fbd4fa36-795f-4ffe-859d-f33bdc8f5da0"
 
 [vars]
 CF_ACCOUNT_ID = "cf13331fb5a6eb8a7647696c8ee027e0"
-# Filled in once Cloudflare Access is enabled and the /admin application exists:
-ACCESS_TEAM_DOMAIN = ""
-ACCESS_AUD = ""
+# Cloudflare Access application "MXM mail admin" (one-time email code, netfuel@gmail.com only)
+ACCESS_TEAM_DOMAIN = "shrill-fog-49e0.cloudflareaccess.com"
+ACCESS_AUD = "b83e81e898a64494e377ae92aa9da9330aaf7531d76dcaa588382d313d2ae271"
