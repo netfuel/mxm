@@ -10,14 +10,14 @@ binding = "MEDIA"
 bucket_name = "mxm"
 
 # ---- Mail admin (/admin) --------------------------------------------------------------
-# Leave commented until the D1 database exists: a placeholder ID would fail the deploy.
-# See docs/mail-setup.md. Secret CF_EMAIL_TOKEN is set in the dashboard, never here.
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "mxm-mail"
-# database_id = "PASTE-D1-DATABASE-ID"
-#
-# [vars]
-# ACCESS_TEAM_DOMAIN = "yourteam.cloudflareaccess.com"
-# ACCESS_AUD = "PASTE-ACCESS-APPLICATION-AUD-TAG"
-# CF_ACCOUNT_ID = "PASTE-ACCOUNT-ID"
+# See docs/mail-setup.md. The sending token CF_EMAIL_TOKEN is a Pages secret set in the dashboard, never here.
+[[d1_databases]]
+binding = "DB"
+database_name = "mxm-mail"
+database_id = "fbd4fa36-795f-4ffe-859d-f33bdc8f5da0"
+
+[vars]
+CF_ACCOUNT_ID = "cf13331fb5a6eb8a7647696c8ee027e0"
+# Filled in once Cloudflare Access is enabled and the /admin application exists:
+ACCESS_TEAM_DOMAIN = ""
+ACCESS_AUD = ""

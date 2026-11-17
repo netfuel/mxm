@@ -417,7 +417,13 @@ async function sendBatch(env, d, id) {
       }
       try {
         const r = await deliver(env, buildMessage(camp, s, sub, true))
-        updates.push(d.prepare(`UPDATE sends SET status = 'sent', message_id = ?, error = NULL, sent_at = datetime('now') WHERE campaign_id = ? AND subscriber_id = ?`).bind(r.messageId || '', id, sid))
+        if (r.bounced || r.suppressed) {
+          // Hard bounce or suppressed: never email this address again
+          updates.push(d.prepare(`UPDATE sends SET status = 'failed', error = ? WHERE campaign_id = ? AND subscriber_id = ?`).bind(r.bounced ? 'Bounced (address does not exist)' : 'On Cloudflare suppression list', id, sid))
+          updates.push(d.prepare(`UPDATE subscribers SET status = 'bounced', unsubscribed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`).bind(sid))
+        } else {
+          updates.push(d.prepare(`UPDATE sends SET status = 'sent', message_id = ?, error = NULL, sent_at = datetime('now') WHERE campaign_id = ? AND subscriber_id = ?`).bind(r.messageId || '', id, sid))
+        }
       } catch (e) {
         if (e instanceof SendError && (e.fatal || e.retry)) {
           // Put it back in the queue; stop this batch
