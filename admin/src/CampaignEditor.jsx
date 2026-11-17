@@ -126,6 +126,13 @@ export default function CampaignEditor({ id, stats, me }) {
               </div>
             </div>
             <div className="card">
+              <h2>Listen <span className="saved" style={{ fontWeight: 400 }}>optional</span></h2>
+              <div className="row">
+                <Field label="SoundCloud link"><input className="input" value={c.listen.url} onChange={e => setC({ listen: { ...c.listen, url: e.target.value } })} placeholder="https://soundcloud.com/marceauxmarceaux/…" /></Field>
+                <Field label="Button label"><input className="input" value={c.listen.label} onChange={e => setC({ listen: { ...c.listen, label: e.target.value } })} placeholder="Listen on SoundCloud" /></Field>
+              </div>
+            </div>
+            <div className="card">
               <h2>Download <span className="saved" style={{ fontWeight: 400 }}>optional</span></h2>
               <Field label="File" hint="Upload up to 95 MB, or paste a Dropbox, Google Drive or Bandcamp code link for bigger files.">
                 <div className="inline">
