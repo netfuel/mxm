@@ -134,7 +134,7 @@ export default function CampaignEditor({ id, stats, me }) {
             </div>
             <div className="card">
               <h2>Download <span className="saved" style={{ fontWeight: 400 }}>optional</span></h2>
-              <Field label="File" hint="Upload up to 95 MB, or paste a Dropbox, Google Drive or Bandcamp code link for bigger files.">
+              <Field label="File (optional)" hint="Upload up to 95 MB, or paste a Dropbox, Google Drive or Bandcamp code link for bigger files.">
                 <div className="inline">
                   <input className="input" value={c.download.url} onChange={e => setC({ download: { ...c.download, url: e.target.value } })} placeholder="https://… or upload" />
                   <UploadButton kind="download" onDone={r => setC({ download: { ...c.download, url: r.url, label: c.download.label || 'Download' } })} />
@@ -143,6 +143,11 @@ export default function CampaignEditor({ id, stats, me }) {
               </Field>
               <div className="row">
                 <Field label="Button label"><input className="input" value={c.download.label} onChange={e => setC({ download: { ...c.download, label: e.target.value } })} placeholder="Download Bloghaus (WAV)" /></Field>
+              </div>
+              <div className="row">
+                <Field label="Ramble link (optional)" hint="Adds a second button so DJs can grab it on Ramble.">
+                  <input className="input" value={c.download.ramble} onChange={e => setC({ download: { ...c.download, ramble: e.target.value } })} placeholder="https://theramble.co/…" /></Field>
+                <Field label="Ramble button label"><input className="input" value={c.download.rambleLabel} onChange={e => setC({ download: { ...c.download, rambleLabel: e.target.value } })} placeholder="Download on Ramble" /></Field>
               </div>
               <Field label="Note (optional)"><input className="input" value={c.download.note} onChange={e => setC({ download: { ...c.download, note: e.target.value } })} placeholder="Free for DJs. Please don't share the file." /></Field>
             </div>
